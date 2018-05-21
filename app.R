@@ -308,6 +308,26 @@ server <- function(input, output) {
   #if all not selected, filter by the service                                             
   {
     df_url
+    
+    if (input$radio==1){
+        df_url= df_url %>%
+             select(Service, Date, Mean, Total)
+    }
+    
+    df_url
+    
+    if (input$radio==2){
+         df_url= df_url %>%
+             select(Service, Date, Median, Total)
+    }
+    
+    df_url
+    if (input$radio==3){
+         df_url= df_url %>%
+             select(Service, Date, Mean, Total)
+    }
+    
+    df_url
     #time.data$Service<-as.factor(time.data$Service)
     if (input$Service != "All"){
       df_url <- df_url[df_url$Service == input$Service,]
@@ -315,13 +335,12 @@ server <- function(input, output) {
     df_url
   
     df_url=df_url[df_url$Date>=(input$dateRange[1]) & df_url$Date<=(input$dateRange[2]),]
+    
+   
   })
   )
 
-    # if (input$radio==1){
-    #   serv= df_url %>%
-    #       select(Service, Date, Mean, Total)
-    # }
+    # 
     # serv
     # if (input$radio==2){
     #   serv= df_url %>%
