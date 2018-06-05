@@ -23,10 +23,10 @@ library(shiny.router)
 
 #function to import data and get rid of nas
 #table_import <- function (dataframe){
- # df<-read.csv(dataframe)
- # df<-df[df$Referrer.URL!="n/a",] %>%
- #   arrange((Service))
-  
+# df<-read.csv(dataframe)
+# df<-df[df$Referrer.URL!="n/a",] %>%
+#   arrange((Service))
+
 #  df$Timestamp<-as.POSIXct(df$Timestamp, format="%d/%m/%Y %H:%M")
 #  return (df)
 #}
@@ -179,7 +179,7 @@ join = df_average %>%
 #add the additional data to the table to include for next time
 #df.append <- df %>%
 #  rbind(time.data) %>%
- # filter (!is.na(date_hour))
+# filter (!is.na(date_hour))
 
 #df.append <- df.append %>%
 #  select(Timestamp, Service, Referrer.URL, Ticket, Count)
@@ -191,58 +191,60 @@ join = df_average %>%
 # Define UI for application that draws a histogram
 
 ui <- 
-dashboardPage(
-  dashboardHeader(title="Deskpro Dashboard"),
-  dashboardSidebar(radioButtons("radio", label=("Choose average type:"),
-                                choices=list("Mean"=1, "Median"=2, "Mode" =3), selected=2
-  ),
-  sidebarMenu(
-    menuItem("Services", tabName = "services"),
-    menuItem("URL Table", tabName="urls"),
-    menuItem(bookmarkButton())
-  )),
-  dashboardBody(
-    tabItems(
-      tabItem("services",
-              tags$style(HTML("
-                              
-                              
-                              .box.box-solid.box-primary>.box-header {
-                              color:#ffffff;
-                              background:	#007BA7;                    }
-                              
-                              .box.box-solid.box-primary{
-                              border-bottom-color:#ffffff;
-                              border-left-color:#ffffff;
-                              border-right-color:#ffffff;
-                              border-top-color:#ffffff;
-                              }
-                              
-                              ")),
-              fluidRow(
-                theme = shinythemes::shinytheme("cerulean"),
-                box(width=12,status = "primary", solidHeader = TRUE,
-                    title = "Number of tickets raised per service",d3Output("packagePlot", width = "100%", height = 700),click="plot_click"),
-                #  ),
+  dashboardPage(
+    dashboardHeader(title="Deskpro Dashboard"),
+    dashboardSidebar(radioButtons("radio", label=("Choose average type:"),
+                                  choices=list("Mean"=1, "Median"=2, "Mode" =3), selected=2
+    ),
+    sidebarMenu(
+      menuItem("Services", tabName = "services"),
+      menuItem("URL Table", tabName="urls"),
+      menuItem(bookmarkButton())
+    )),
+    dashboardBody(
+      tabItems(
+        tabItem("services",
+                tags$style(HTML("
+                                
+                                
+                                .box.box-solid.box-primary>.box-header {
+                                color:#ffffff;
+                                background:	#007BA7;                    }
+                                
+                                .box.box-solid.box-primary{
+                                border-bottom-color:#ffffff;
+                                border-left-color:#ffffff;
+                                border-right-color:#ffffff;
+                                border-top-color:#ffffff;
+                                }
+                                
+                                ")),
                 fluidRow(
-                  DT::dataTableOutput("results")
+                  theme = shinythemes::shinytheme("cerulean"),
+                  box(width=12,status = "primary", solidHeader = TRUE,
+                      title = "Number of tickets raised per service",d3Output("packagePlot", width = "100%", height = 700),click="plot_click"),
+                  #  ),
+                  fluidRow(box(width =11, solidHeader=T,
+                               dateRangeInput('dateRange', label = h4('Date Range'), start = "2018-01-01", end = Sys.Date()), #Calendar for the user to input date
+                               
+                    DT::dataTableOutput("results")
+                  ))
+                  #box(htmlOutput("x_value"),
+                  #   verbatimTextOutput("selected_rows"))
                 )
-                #box(htmlOutput("x_value"),
-                #   verbatimTextOutput("selected_rows"))
-              )
-              ),
-      tabItem("urls",
-              box(width =12, solidHeader=T,selectInput("Service","Service", 
-                                                       c("All", unique(as.character(df_url$Service)))),
-                  dateRangeInput('dateRange', label = h4('Date Range'), start = "2018-01-01", end = Sys.Date()), #Calendar for the user to input date
-                  
-                  DT::dataTableOutput("table"))
-              
-      )
-      
-      )
-    )  
-)
+                ),
+        tabItem("urls",
+                box(width =12, solidHeader=T,selectInput("Service","Service", 
+                                                         c("All", unique(as.character(df_url$Service)))),
+                    dateRangeInput('dateRange', label = h4('Date Range'), start = "2018-01-01", end = Sys.Date()), #Calendar for the user to input date
+                    
+                    DT::dataTableOutput("table"))
+                
+        )
+        
+        )
+      )  
+  )
 
 #)
 #)
@@ -251,72 +253,72 @@ dashboardPage(
 
 # Define server logic required to draw a histogram
 server <- function(input, output,session) {
-
+  
   # Service <-(join2$Service)
-   output$packagePlot <- renderD3({
-     if (input$radio==1){
-       join2= join %>%
-         select(Service, date, mean, hour_hits)
-       join2=join2 %>%
-         mutate(test = mean-hour_hits)
-       join2= join2 %>%
-         mutate(flags = case_when(
-           test ==0 ~ "lightgray",
-           test <0 ~ "red",
-           TRUE ~ "lightgray"))
-       join2
-       
-     } 
-     if (input$radio==2){
-       join2= join %>%
-         select(Service, date, med, hour_hits)
-       join2=join2 %>%
-         mutate(test = med-hour_hits)
-       join2= join2 %>%
-         mutate(flags = case_when(
-           test ==0 ~ "lightgray",
-           test <0 ~ "red",
-           TRUE ~ "lightgray"))
-       join2
-       
-     }
-     if (input$radio==3){
-       join2= join %>%
-         select(Service, date, mode, hour_hits)
-       join2=join2 %>%
-         mutate(test = mode-hour_hits)
-       join2= join2 %>%
-         mutate(flags = case_when(
-           test ==0 ~ "lightgray",
-           test <0 ~ "red",
-           TRUE ~ "lightgray"))
-     
-     join2
+  output$packagePlot <- renderD3({
+    if (input$radio==1){
+      join2= join %>%
+        select(Service, date, mean, hour_hits)
+      join2=join2 %>%
+        mutate(test = mean-hour_hits)
+      join2= join2 %>%
+        mutate(flags = case_when(
+          test ==0 ~ "lightgray",
+          test <0 ~ "red",
+          TRUE ~ "lightgray"))
+      join2
+      
+    } 
+    if (input$radio==2){
+      join2= join %>%
+        select(Service, date, med, hour_hits)
+      join2=join2 %>%
+        mutate(test = med-hour_hits)
+      join2= join2 %>%
+        mutate(flags = case_when(
+          test ==0 ~ "lightgray",
+          test <0 ~ "red",
+          TRUE ~ "lightgray"))
+      join2
+      
+    }
+    if (input$radio==3){
+      join2= join %>%
+        select(Service, date, mode, hour_hits)
+      join2=join2 %>%
+        mutate(test = mode-hour_hits)
+      join2= join2 %>%
+        mutate(flags = case_when(
+          test ==0 ~ "lightgray",
+          test <0 ~ "red",
+          TRUE ~ "lightgray"))
+      
+      join2
+      
+    }
+    join2
+    order <- unique(join2$Service)
+    bub <- join2%>%
+      group_by(Service, flags) %>%
+      tally(hour_hits) %>%
+      arrange(desc(n), tolower(Service)) %>%
+      #     # Just show the top 60, otherwise it gets hard to see
+      head(30)
+    bub= bub %>%
+      select(Service,n) %>%
+      rename(id=Service,
+             value=n)
+    bub=as.data.frame(bub)
+    write.csv(bub, "bub.csv", row.names=F)
+    r2d3(data = read.csv("bub.csv"), d3_version = 4, script = "bubbles.js")
     
-   }
-     join2
-     order <- unique(join2$Service)
-     bub <- join2%>%
-       group_by(Service, flags) %>%
-       tally(hour_hits) %>%
-       arrange(desc(n), tolower(Service)) %>%
-  #     # Just show the top 60, otherwise it gets hard to see
-       head(30)
-     bub= bub %>%
-       select(Service,n) %>%
-       rename(id=Service,
-                 value=n)
-     bub=as.data.frame(bub)
-     write.csv(bub, "bub.csv", row.names=F)
-     r2d3(data = read.csv("bub.csv"), d3_version = 4, script = "bubbles.js")
-     
-     #bubbles=bubbles(bub$n, bub$Service, key = bub$Service, color=bub$flags, tooltip =(bub$n) )
-
-
-  #   #bubbles(hourly_url_agg$Service, hourly_url_agg$Service, key = hourly_url_agg$Service)
-   })
-   
-
+    #bubbles=bubbles(bub$n, bub$Service, key = bub$Service, color=bub$flags, tooltip =(bub$n) )
+    
+    
+    #   #bubbles(hourly_url_agg$Service, hourly_url_agg$Service, key = hourly_url_agg$Service)
+  })
+  
+  
   #uses historical data
   df_url
   Service <-as.factor(df_url$Service)
@@ -324,7 +326,7 @@ server <- function(input, output,session) {
   #mean_issues<-(hourly_url_agg$flag2)
   # output$table1<-
   # Filter data based on selections
- 
+  
   output$table <- DT::renderDataTable(DT::datatable(rownames=F,options=list(
     lengthMenu = list(c(3, 10, 15, 20), c('3', '10','15', '20' )),
     pageLength = 10,
@@ -340,21 +342,21 @@ server <- function(input, output,session) {
     df_url
     
     if (input$radio==1){
-        df_url= df_url %>%
-             select(Service, Date, Mean, Total)
+      df_url= df_url %>%
+        select(Service, Date, Mean, Total)
     }
     
     df_url
     
     if (input$radio==2){
-         df_url= df_url %>%
-             select(Service, Date, Median, Total)
+      df_url= df_url %>%
+        select(Service, Date, Median, Total)
     }
     
     df_url
     if (input$radio==3){
-         df_url= df_url %>%
-             select(Service, Date, Mode, Total)
+      df_url= df_url %>%
+        select(Service, Date, Mode, Total)
     }
     
     df_url
@@ -363,15 +365,15 @@ server <- function(input, output,session) {
       df_url <- df_url[df_url$Service == input$Service,]
     }
     df_url
-  
+    
     df_url=df_url[df_url$Date>=(input$dateRange[1]) & df_url$Date<=(input$dateRange[2]),]
     df_url
-   
+    
   })
-
+  
   )
   
-    wc_click <- reactive({
+  wc_click <- reactive({
     a <- input$clickedValue
     print(a)
   })
@@ -380,25 +382,64 @@ server <- function(input, output,session) {
     if(!is.null(val))
     {
       data <-filter(df_url,Service==val)
+      if (input$radio==1){
+        data= data %>%
+          select(Date, Mean, Total)}
+      data
+      
+      if (input$radio==2){
+        data= data %>%
+           select(Date, Median, Total)
+       }
+      data
+      if (input$radio==3){
+         data= data %>%
+        select(Date, Mode, Total)
+       }
+      data
+     
+       data=data[data$Date>=(input$dateRange[1]) & data$Date<=(input$dateRange[2]),]
+      data
     }
   })
+  
   output$results <-  DT::renderDataTable({
     data()
-  
-  })
-  
     
+  })
+  #output$table <- DT::renderDataTable(DT::datatable(rownames=F,options=list(
+#observeEvent(input$radio,{
+#  if (input$radio==1){
+ # data= data %>%
+ #   select(Date, Mean, Total)}
+#  data
+ 
+ #if (input$radio==2){
+ #  data= data %>%
+#     select(Date, Median, Total)
+# }
+ #data
+ #if (input$radio==3){
+##   data= data %>%
+   #  select(Date, Mode, Total)
+# }
+##data
+#})
+#output$results <-  DT::renderDataTable({
+#  input$radio
+ # data()
   
+#})
 
+  
   #format the table using repor ted issues column, any value above the mean
   #colour it in red
-#  %>%formatStyle(
+  #  %>%formatStyle(
   # 'col',
   #  backgroundColor = styleEqual(unique(df_url_color$url), c("white", "red"))
- # )
+  # )
   #)
-#)
+  #)
 }
 # Run the application 
 shinyApp(ui = ui, server = server, enableBookmarking="url")
-
