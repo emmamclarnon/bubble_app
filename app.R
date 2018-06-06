@@ -18,7 +18,10 @@ library(readr)
 library(dplyr)
 library(tidyverse)
 library(r2d3)
-library(shiny.router)
+library(modeest)
+
+options(digits=3)
+#library(shiny.router)
 #setwd("C:/Users/AT003502/Desktop/datasciacc/js")
 
 #function to import data and get rid of nas
@@ -58,8 +61,10 @@ df<- df %>% mutate(year = year(date),
 
 df$date<-ymd(df$date)
 
-library(modeest)
-#get median value for all historical data and choose most recent date for each service and works out daily median value
+
+#get average values for all historical data, works out daily median value per service 
+#and chooses most recent date for each service - sort of daily rolling average
+#this table is used for bubble chart
 df_average<-df %>%
   filter (!is.na(Service))%>%
   group_by(Service, date) %>%
@@ -67,12 +72,17 @@ df_average<-df %>%
     mode = mlv (Count, method= 'mfv')[['M']],
     med = median(Count, na.rm=T),
     mean=mean(Count, na.rm=T),
-    total =sum(Count, na.rm=T)) %>%
+    total =sum(Count, na.rm=T))%>%
   slice(which.max(date))
 
-#df for DT
+#df for DT in tab 2 - shows urls as well as services
+#this table is used for the data displayed in tab 2 of the dashboard
 df_url<-df %>%
-  filter (!is.na(Service))%>%
+  filter (!is.na(Service),
+          Referrer.URL!="n/a",
+          Referrer.URL!="/home",
+          Referrer.URL!="None",
+          Service!="unknown")%>%
   transmute(
     url=Referrer.URL,
     Service= Service,
@@ -86,7 +96,18 @@ df_url<-df %>%
     Median= median(Count, na.rm=T))%>%
   slice(which.max(Date))
 
+df_url <- arrange(df_url, desc(Total))
+# df_url<-df_url %>%
+#   filter(url!="n/a")
+# df_url<-df_url %>%
+#   filter(url!="/home")
+# df_url<-df_url %>%
+#   filter(url!="None")
+# df_url<-df_url %>%
+#   filter(Service!="unknown")
 #dummy data coming in
+#this is to show what happens when "new" data is consumed - e.g. a 24 hour period of data
+#takes data in and aggregates it on hourly basis - works out number of tickets raised per 30 mins, per service
 time.data<-read.csv("old_24.csv",header=T)
 
 time.data$date_hour = strptime(time.data$Timestamp, format='%d/%m/%Y %H:%M')
@@ -113,8 +134,8 @@ time.data %>%
   transmute(
     submit_datetime = dmy_hm(Timestamp)
     ,submit_date = date(submit_datetime)
-    ,submit_hour = hour(submit_datetime) %/%0.5
-    ,month = month(submit_datetime)#summarise every 30 mins
+    ,submit_hour = hour(submit_datetime) %/%0.5 #summarise numer of tickets to every 30 mins
+    ,month = month(submit_datetime)
     ,Service = Service
     ,hits = Count
   ) %>%
@@ -137,35 +158,30 @@ time.data %>%
     row_number() == n()
   ) -> events.data2
 
-events.dat2 = events.data2 %>%
-  group_by(
-    Service
-    ,submit_date
-    ,submit_hour) %>%
-  slice(which.max(month))
+#events.dat2 = events.data2 %>%
+#  group_by(
+ #   Service
+#    ,submit_date
+ #   ,submit_hour) %>%
+#  slice(which.max(month))
 
 #sample 1000 rows of data
-sub2<-events.data2
-date=events.data2$submit_date
+#sub2<-events.data2
+#date=events.data2$submit_date
 
 #select the most recent dates for each service
-sub_recent=sub2 %>%
+hourly_agg=events.data2 %>%
   group_by(Service)%>%
   slice(which.max(submit_date))
 
-hourly_agg = sub_recent
-
-
-#join new data and old data so can compare median and count values
+#hourly_agg = sub_recent
+#merging the tables of historical data and the 24 hour data so can compare average and count values
 
 join = df_average %>%
   filter (!is.na(Service))%>%
   left_join (hourly_agg, by = "Service")
 
 
-
-
-# Creates router. We provide routing path and UI for this page.
 
 # join2 = join %>%
 #   mutate(test= med - hour_hits)
@@ -196,6 +212,8 @@ ui <-
     dashboardSidebar(radioButtons("radio", label=("Choose average type:"),
                                   choices=list("Mean"=1, "Median"=2, "Mode" =3), selected=2
     ),
+    sliderInput("threshold", "Threshold value:", min=0, max=100, value=0,
+                step=10),
     sidebarMenu(
       menuItem("Services", tabName = "services"),
       menuItem("URL Table", tabName="urls"),
@@ -253,21 +271,123 @@ ui <-
 
 # Define server logic required to draw a histogram
 server <- function(input, output,session) {
-  
+  options(digits=3)
   # Service <-(join2$Service)
   output$packagePlot <- renderD3({
+    if (input$threshold==0){
+      join= join 
+      
+      write.csv(join, "join0.csv", row.names=F)
+    }
+    if (input$threshold==10){
+      join= join %>%
+        mutate(mode= mode * 1.1,
+               med = med*1.1,
+               mean=mean*1.1)
+      
+      write.csv(join, "join10.csv", row.names=F)
+        
+    }
+    if (input$threshold==20){
+      join= join %>%
+        mutate(mode= mode * 1.2,
+               med = med*1.2,
+               mean=mean*1.2)
+     
+      join
+      write.csv(join, "join20.csv", row.names=F)
+    }
+    if (input$threshold==30){
+      join= join %>%
+        mutate(mode= mode * 1.3,
+               med = med*1.3,
+               mean=mean*1.3)
+      
+      join
+      write.csv(join, "join30.csv", row.names=F)
+    }
+    if (input$threshold==40){
+      join= join %>%
+        mutate(mode= mode * 1.4,
+               med = med*1.4,
+               mean=mean*1.4)
+   
+      join
+      write.csv(join, "join40.csv", row.names=F)
+      
+    }
+    if (input$threshold==50){
+      join= join %>%
+        mutate(mode= mode * 1.5,
+               med = med*1.5,
+               mean=mean*1.5)
+      
+      join
+      write.csv(join, "join50.csv", row.names=F) 
+    }
+    if (input$threshold==60){
+      join= join %>%
+        mutate(mode= mode * 1.6,
+               med = med*1.6,
+               mean=mean*1.6)
+    
+      join
+      write.csv(join, "join60.csv", row.names=F)
+      
+    }
+    if (input$threshold==70){
+      join= join %>%
+        mutate(mode= mode * 1.7,
+               med = med*1.7,
+               mean=mean*1.7)
+     
+      join
+      write.csv(join, "join70.csv", row.names=F)
+    }
+    if (input$threshold==80){
+      join= join %>%
+        mutate(mode= mode * 1.8,
+               med = med*1.8,
+               mean=mean*1.8)
+      join
+      write.csv(join, "join80.csv", row.names=F)
+      
+    }
+    if (input$threshold==90){
+      join= join %>%
+        mutate(mode= mode * 1.9,
+               med = med*1.9,
+               mean=mean*1.9)
+      join=round(join,2)
+      join
+      write.csv(join, "join90.csv", row.names=F) 
+    }
+    if (input$threshold==100){
+      join= join %>%
+        mutate(mode= mode * 2,
+               med = med*2,
+               mean=mean*2)
+   
+      join
+      write.csv(join, "join100.csv", row.names=F)
+      
+    }
+ 
     if (input$radio==1){
       join2= join %>%
         select(Service, date, mean, hour_hits)
+      
       join2=join2 %>%
-        mutate(test = mean-hour_hits)
+        mutate(test = (mean)-hour_hits)
       join2= join2 %>%
         mutate(flags = case_when(
-          test ==0 ~ "lightgray",
+          test >0 ~ "lightgray",
           test <0 ~ "red",
           TRUE ~ "lightgray"))
-      join2
-      
+      join2=join2%>%
+        filter(flags=="red")
+   
+      write.csv(join2, "join2_mean.csv", row.names=F)
     } 
     if (input$radio==2){
       join2= join %>%
@@ -276,11 +396,13 @@ server <- function(input, output,session) {
         mutate(test = med-hour_hits)
       join2= join2 %>%
         mutate(flags = case_when(
-          test ==0 ~ "lightgray",
+          test >0 ~ "lightgray",
           test <0 ~ "red",
           TRUE ~ "lightgray"))
-      join2
-      
+      join2=join2%>%
+        filter(flags=="red")
+  
+      write.csv(join2, "join2_med.csv", row.names=F)
     }
     if (input$radio==3){
       join2= join %>%
@@ -293,17 +415,22 @@ server <- function(input, output,session) {
           test <0 ~ "red",
           TRUE ~ "lightgray"))
       
-      join2
+      join2=join2%>%
+        filter(flags=="red")
+      write.csv(join2, "join2_mode.csv", row.names=F)
+
       
     }
     join2
     order <- unique(join2$Service)
+    
+    
     bub <- join2%>%
       group_by(Service, flags) %>%
       tally(hour_hits) %>%
       arrange(desc(n), tolower(Service)) %>%
       #     # Just show the top 60, otherwise it gets hard to see
-      head(30)
+      head(90)
     bub= bub %>%
       select(Service,n) %>%
       rename(id=Service,
@@ -319,8 +446,8 @@ server <- function(input, output,session) {
   })
   
   
-  #uses historical data
-  df_url
+
+
   Service <-as.factor(df_url$Service)
   #work out the mean for reported issues
   #mean_issues<-(hourly_url_agg$flag2)
@@ -340,6 +467,8 @@ server <- function(input, output,session) {
   #if all not selected, filter by the service                                             
   {
     df_url
+    
+    ###filter by radio buttons
     
     if (input$radio==1){
       df_url= df_url %>%
@@ -370,7 +499,7 @@ server <- function(input, output,session) {
     df_url
     
   })
-  
+ 
   )
   
   wc_click <- reactive({
@@ -382,6 +511,97 @@ server <- function(input, output,session) {
     if(!is.null(val))
     {
       data <-filter(df_url,Service==val)
+      ##filter by slider first 
+      if (input$threshold==0){
+        data= data %>%
+          mutate(Mode= Mode * 1,
+                 Median = Median*1,
+                 Mean=Mean*1)
+        data
+        
+      }
+      if (input$threshold==10){
+        data= data %>%
+          mutate(Mode= Mode * 1.1,
+                 Median = Median*1.1,
+                 Mean=Mean*1.1)
+        data
+        
+      }
+      if (input$threshold==20){
+        data= data %>%
+          mutate(Mode= Mode * 1.2,
+                 Median = Median*1.2,
+                 Mean=Mean*1.2)
+        data
+        
+      }
+      if (input$threshold==30){
+        data= data %>%
+          mutate(Mode= Mode * 1.3,
+                 Median = Median*1.3,
+                 Mean=Mean*1.3)
+        data
+        
+      }
+      if (input$threshold==40){
+        data= data %>%
+          mutate(Mode= Mode * 1.4,
+                 Median = Median*1.4,
+                 Mean=Mean*1.4)
+        data
+        
+      }
+      if (input$threshold==50){
+        data= data %>%
+          mutate(Mode= Mode * 1.5,
+                 Median = Median*1.5,
+                 Mean=Mean*1.5)
+        data
+        
+      }
+      if (input$threshold==60){
+        data= data %>%
+          mutate(Mode= Mode * 1.6,
+                 Median = Median*1.6,
+                 Mean=Mean*1.6)
+        data
+        
+      }
+      if (input$threshold==70){
+        data= data %>%
+          mutate(Mode= Mode * 1.7,
+                 Median = Median*1.7,
+                 Mean=Mean*1.7)
+        data
+        
+      }
+      if (input$threshold==80){
+        data= data %>%
+          mutate(Mode= Mode * 1.8,
+                 Median = Median*1.8,
+                 Mean=Mean*1.8)
+        data
+        
+      }
+      if (input$threshold==90){
+        data= data %>%
+          mutate(Mode= Mode * 1.9,
+                 Median = Median*1.9,
+                 Mean=Mean*1.9)
+        data
+        
+      }
+      if (input$threshold==100){
+        data= data %>%
+          mutate(Mode= Mode * 2,
+                 Median = Median*2,
+                 Mean=Mean*2)
+        data
+        
+      }
+      
+      ###filter by radio buttons
       if (input$radio==1){
         data= data %>%
           select(Date, Mean, Total)}
@@ -390,21 +610,28 @@ server <- function(input, output,session) {
       if (input$radio==2){
         data= data %>%
            select(Date, Median, Total)
+          
        }
       data
       if (input$radio==3){
          data= data %>%
         select(Date, Mode, Total)
+        
        }
       data
-     
+     ###filter by date
+      
        data=data[data$Date>=(input$dateRange[1]) & data$Date<=(input$dateRange[2]),]
       data
+      
     }
   })
-  
+
+options(digits=3)
   output$results <-  DT::renderDataTable({
-    data()
+  
+   data()
+    
     
   })
   #output$table <- DT::renderDataTable(DT::datatable(rownames=F,options=list(

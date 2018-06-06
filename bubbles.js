@@ -13,7 +13,7 @@ var pack = d3.pack()
   .padding(1.5);
     
 var format = d3.format(",d");
-var color = d3.scaleOrdinal(d3.schemeCategory20c);
+var color = d3.scaleOrdinal(d3.schemeCategory10);
 
 var group = svg.append("g");
 
