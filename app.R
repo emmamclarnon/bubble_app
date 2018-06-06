@@ -69,10 +69,10 @@ df_average<-df %>%
   filter (!is.na(Service))%>%
   group_by(Service, date) %>%
   summarise(
-    mode = mlv (Count, method= 'mfv')[['M']],
-    med = median(Count, na.rm=T),
-    mean=mean(Count, na.rm=T),
-    total =sum(Count, na.rm=T))%>%
+    mode = (round(mlv (Count, method= 'mfv')[['M']],2)),
+    med = (round(median(Count, na.rm=T),2)),
+    mean=(round(mean(Count, na.rm=T),2)),
+    total =(round(sum(Count, na.rm=T),2)))%>%
   slice(which.max(date))
 
 #df for DT in tab 2 - shows urls as well as services
@@ -90,10 +90,10 @@ df_url<-df %>%
     Count=Count) %>%
   group_by(url,Service, Date) %>%
   summarise(
-    Total =sum(Count, na.rm=T),
-    Mean = mean(Count, na.rm=T),
-    Mode = mlv (Count, method= 'mfv')[['M']],
-    Median= median(Count, na.rm=T))%>%
+    Total =(round(sum(Count, na.rm=T),2)),
+    Mean = (round(mean(Count, na.rm=T),2)),
+    Mode = (round(mlv (Count, method= 'mfv')[['M']],2)),
+    Median= (round(median(Count, na.rm=T),2)))%>%
   slice(which.max(Date))
 
 df_url <- arrange(df_url, desc(Total))
@@ -226,7 +226,7 @@ ui <-
                                 
                                 
                                 .box.box-solid.box-primary>.box-header {
-                                color:#ffffff;
+                                color:#fff;
                                 background:	#007BA7;                    }
                                 
                                 .box.box-solid.box-primary{
@@ -285,7 +285,7 @@ server <- function(input, output,session) {
                med = med*1.1,
                mean=mean*1.1)
       
-      write.csv(join, "join10.csv", row.names=F)
+     # write.csv(join, "join10.csv", row.names=F)
         
     }
     if (input$threshold==20){
@@ -295,7 +295,7 @@ server <- function(input, output,session) {
                mean=mean*1.2)
      
       join
-      write.csv(join, "join20.csv", row.names=F)
+      #write.csv(join, "join20.csv", row.names=F)
     }
     if (input$threshold==30){
       join= join %>%
@@ -304,7 +304,7 @@ server <- function(input, output,session) {
                mean=mean*1.3)
       
       join
-      write.csv(join, "join30.csv", row.names=F)
+      #write.csv(join, "join30.csv", row.names=F)
     }
     if (input$threshold==40){
       join= join %>%
@@ -313,7 +313,7 @@ server <- function(input, output,session) {
                mean=mean*1.4)
    
       join
-      write.csv(join, "join40.csv", row.names=F)
+      #write.csv(join, "join40.csv", row.names=F)
       
     }
     if (input$threshold==50){
@@ -323,7 +323,7 @@ server <- function(input, output,session) {
                mean=mean*1.5)
       
       join
-      write.csv(join, "join50.csv", row.names=F) 
+     # write.csv(join, "join50.csv", row.names=F) 
     }
     if (input$threshold==60){
       join= join %>%
@@ -332,7 +332,7 @@ server <- function(input, output,session) {
                mean=mean*1.6)
     
       join
-      write.csv(join, "join60.csv", row.names=F)
+     # write.csv(join, "join60.csv", row.names=F)
       
     }
     if (input$threshold==70){
@@ -342,7 +342,7 @@ server <- function(input, output,session) {
                mean=mean*1.7)
      
       join
-      write.csv(join, "join70.csv", row.names=F)
+      #write.csv(join, "join70.csv", row.names=F)
     }
     if (input$threshold==80){
       join= join %>%
@@ -350,7 +350,7 @@ server <- function(input, output,session) {
                med = med*1.8,
                mean=mean*1.8)
       join
-      write.csv(join, "join80.csv", row.names=F)
+     # write.csv(join, "join80.csv", row.names=F)
       
     }
     if (input$threshold==90){
@@ -360,7 +360,7 @@ server <- function(input, output,session) {
                mean=mean*1.9)
       join=round(join,2)
       join
-      write.csv(join, "join90.csv", row.names=F) 
+      #write.csv(join, "join90.csv", row.names=F) 
     }
     if (input$threshold==100){
       join= join %>%
@@ -369,7 +369,7 @@ server <- function(input, output,session) {
                mean=mean*2)
    
       join
-      write.csv(join, "join100.csv", row.names=F)
+      #write.csv(join, "join100.csv", row.names=F)
       
     }
  
@@ -387,7 +387,7 @@ server <- function(input, output,session) {
       join2=join2%>%
         filter(flags=="red")
    
-      write.csv(join2, "join2_mean.csv", row.names=F)
+      #write.csv(join2, "join2_mean.csv", row.names=F)
     } 
     if (input$radio==2){
       join2= join %>%
@@ -402,7 +402,7 @@ server <- function(input, output,session) {
       join2=join2%>%
         filter(flags=="red")
   
-      write.csv(join2, "join2_med.csv", row.names=F)
+      #write.csv(join2, "join2_med.csv", row.names=F)
     }
     if (input$radio==3){
       join2= join %>%
@@ -417,7 +417,7 @@ server <- function(input, output,session) {
       
       join2=join2%>%
         filter(flags=="red")
-      write.csv(join2, "join2_mode.csv", row.names=F)
+      #write.csv(join2, "join2_mode.csv", row.names=F)
 
       
     }
@@ -457,6 +457,7 @@ server <- function(input, output,session) {
   output$table <- DT::renderDataTable(DT::datatable(rownames=F,options=list(
     lengthMenu = list(c(3, 10, 15, 20), c('3', '10','15', '20' )),
     pageLength = 10,
+    
     # 
     initComplete = JS(
       
@@ -475,7 +476,7 @@ server <- function(input, output,session) {
         select(Service, Date, Mean, Total)
     }
     
-    df_url
+    df_url 
     
     if (input$radio==2){
       df_url= df_url %>%
@@ -627,13 +628,30 @@ server <- function(input, output,session) {
     }
   })
 
-options(digits=3)
-  output$results <-  DT::renderDataTable({
+
+
+output$results <- DT::renderDataTable(DT::datatable(rownames=F,options=list(
+  lengthMenu = list(c(10, 20,30,40,50,60,70,80,90,100), c('10','20','30','40','50','60','70','80','90','100' )),
+  pageLength = 10,
+  autoWidth=T,
+  scrollX=T,
+  # 
+  initComplete = JS(
+    
+    "function(settings, json) {",
+    "$(this.api().table().header()).css({'background-color': '#038fd2', 'color': '#fff'});",
+    "}")
+),
+data()
+
+)
+)
+  #output$results <-  DT::renderDataTable({
   
-   data()
+   #data()
     
     
-  })
+ # })
   #output$table <- DT::renderDataTable(DT::datatable(rownames=F,options=list(
 #observeEvent(input$radio,{
 #  if (input$radio==1){
