@@ -97,6 +97,7 @@ df_url<-df %>%
   slice(which.max(Date))
 
 df_url <- arrange(df_url, desc(Total))
+df_url<-arrange(df_url, (Service))
 # df_url<-df_url %>%
 #   filter(url!="n/a")
 # df_url<-df_url %>%
@@ -277,7 +278,7 @@ server <- function(input, output,session) {
     if (input$threshold==0){
       join= join 
       
-      write.csv(join, "join0.csv", row.names=F)
+      #write.csv(join, "join0.csv", row.names=F)
     }
     if (input$threshold==10){
       join= join %>%
@@ -457,6 +458,8 @@ server <- function(input, output,session) {
   output$table <- DT::renderDataTable(DT::datatable(rownames=F,options=list(
     lengthMenu = list(c(3, 10, 15, 20), c('3', '10','15', '20' )),
     pageLength = 10,
+    autoWidth=F,
+    scrollX=T,
     
     # 
     initComplete = JS(
@@ -633,7 +636,7 @@ server <- function(input, output,session) {
 output$results <- DT::renderDataTable(DT::datatable(rownames=F,options=list(
   lengthMenu = list(c(10, 20,30,40,50,60,70,80,90,100), c('10','20','30','40','50','60','70','80','90','100' )),
   pageLength = 10,
-  autoWidth=T,
+  autoWidth=F,
   scrollX=T,
   # 
   initComplete = JS(
