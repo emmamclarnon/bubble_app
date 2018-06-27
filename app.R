@@ -135,7 +135,7 @@ time.data %>%
   transmute(
     submit_datetime = dmy_hm(Timestamp)
     ,submit_date = date(submit_datetime)
-    ,submit_hour = hour(submit_datetime) %/%0.5 #summarise numer of tickets to every 30 mins
+    ,submit_hour = hour(submit_datetime) #summarise numer of tickets to every 30 mins
     ,month = month(submit_datetime)
     ,Service = Service
     ,hits = Count
@@ -159,11 +159,45 @@ time.data %>%
     row_number() == n()
   ) -> events.data2
 
+
+time.data %>%
+  transmute(
+    submit_datetime = dmy_hm(Timestamp)
+    ,submit_date = date(submit_datetime)
+    ,submit_hour = hour(submit_datetime) #summarise numer of tickets to every 30 mins
+    ,month = month(submit_datetime)
+    ,Service = Service
+    ,hits = Count,
+    url=Referrer.URL
+  ) %>%
+  group_by(
+    Service
+    ,submit_date
+    ,submit_hour
+    ,month,url
+  ) %>%
+  summarise(
+    hour_hits = sum(hits)
+    
+  ) %>%
+  arrange(
+    submit_hour,
+    submit_date
+    ,Service
+  ) %>%
+  filter(
+    !is.na(Service),
+    url!="n/a",
+    url!="/home",
+    url!="None",
+    url!="unknown",
+    row_number() == n()
+  )-> bub_urls
 #events.dat2 = events.data2 %>%
 #  group_by(
- #   Service
+#   Service
 #    ,submit_date
- #   ,submit_hour) %>%
+#   ,submit_hour) %>%
 #  slice(which.max(month))
 
 #sample 1000 rows of data
@@ -175,12 +209,40 @@ hourly_agg=events.data2 %>%
   group_by(Service)%>%
   slice(which.max(submit_date))
 
+
+df %>%
+  group_by(
+    Service,year, month, day, time
+  ) %>%
+  summarise(
+    hour_hit = sum(Count)
+  ) %>%
+  group_by(
+    Service#,
+   # hour_hit
+  ) %>%
+  summarise(
+    mean=(round(mean(hour_hit),2)),
+    mode=(round(mlv(hour_hit,method='mfv')[['M']],2)),
+    median=(round(median(hour_hit),2))
+  ) -> df_average_2
+
+events.data2 %>%
+  rename(hits=hour_hits) %>%
+  group_by(
+    Service
+  ) %>%
+  summarise(
+    hour_hits = mean(hits)
+  ) -> hourly_agg_2
+
 #hourly_agg = sub_recent
 #merging the tables of historical data and the 24 hour data so can compare average and count values
 
-join = df_average %>%
+join = df_average_2 %>%
   filter (!is.na(Service))%>%
-  left_join (hourly_agg, by = "Service")
+  inner_join (hourly_agg_2, by = "Service") %>%
+  rename(med=median)
 
 
 
@@ -211,7 +273,7 @@ ui <-
   dashboardPage(
     dashboardHeader(title="Deskpro Dashboard"),
     dashboardSidebar(radioButtons("radio", label=("Choose average type:"),
-                                  choices=list("Mean"=1, "Median"=2, "Mode" =3), selected=2
+                                  choices=list("Mean"=1, "Median"=2, "Mode" =3)#, selected=1
     ),
     sliderInput("threshold", "Threshold value:", min=0, max=100, value=0,
                 step=10),
@@ -241,12 +303,12 @@ ui <-
                 fluidRow(
                   theme = shinythemes::shinytheme("cerulean"),
                   box(width=12,status = "primary", solidHeader = TRUE,
-                      title = "Number of tickets raised per service",d3Output("packagePlot", width = "100%", height = 700),click="plot_click"),
-                  #  ),
+                      title = "Number of tickets raised per service",d3Output("packagePlot", width = "100%", height = 700)),
+                   # ),
                   fluidRow(box(width =11, solidHeader=T,
-                               dateRangeInput('dateRange', label = h4('Date Range'), start = "2018-01-01", end = Sys.Date()), #Calendar for the user to input date
+                              # dateRangeInput('dateRange', label = h4('Date Range'), start = "2018-01-01", end = Sys.Date()), #Calendar for the user to input date
                                
-                    DT::dataTableOutput("results")
+                               DT::dataTableOutput("results")
                   ))
                   #box(htmlOutput("x_value"),
                   #   verbatimTextOutput("selected_rows"))
@@ -273,110 +335,17 @@ ui <-
 # Define server logic required to draw a histogram
 server <- function(input, output,session) {
   options(digits=3)
-  # Service <-(join2$Service)
-  output$packagePlot <- renderD3({
-    if (input$threshold==0){
-      join= join 
-      
-      #write.csv(join, "join0.csv", row.names=F)
-    }
-    if (input$threshold==10){
-      join= join %>%
-        mutate(mode= mode * 1.1,
-               med = med*1.1,
-               mean=mean*1.1)
-      
-     # write.csv(join, "join10.csv", row.names=F)
-        
-    }
-    if (input$threshold==20){
-      join= join %>%
-        mutate(mode= mode * 1.2,
-               med = med*1.2,
-               mean=mean*1.2)
-     
-      join
-      #write.csv(join, "join20.csv", row.names=F)
-    }
-    if (input$threshold==30){
-      join= join %>%
-        mutate(mode= mode * 1.3,
-               med = med*1.3,
-               mean=mean*1.3)
-      
-      join
-      #write.csv(join, "join30.csv", row.names=F)
-    }
-    if (input$threshold==40){
-      join= join %>%
-        mutate(mode= mode * 1.4,
-               med = med*1.4,
-               mean=mean*1.4)
-   
-      join
-      #write.csv(join, "join40.csv", row.names=F)
-      
-    }
-    if (input$threshold==50){
-      join= join %>%
-        mutate(mode= mode * 1.5,
-               med = med*1.5,
-               mean=mean*1.5)
-      
-      join
-     # write.csv(join, "join50.csv", row.names=F) 
-    }
-    if (input$threshold==60){
-      join= join %>%
-        mutate(mode= mode * 1.6,
-               med = med*1.6,
-               mean=mean*1.6)
+  
+  
+  observe({
     
-      join
-     # write.csv(join, "join60.csv", row.names=F)
-      
-    }
-    if (input$threshold==70){
-      join= join %>%
-        mutate(mode= mode * 1.7,
-               med = med*1.7,
-               mean=mean*1.7)
-     
-      join
-      #write.csv(join, "join70.csv", row.names=F)
-    }
-    if (input$threshold==80){
-      join= join %>%
-        mutate(mode= mode * 1.8,
-               med = med*1.8,
-               mean=mean*1.8)
-      join
-     # write.csv(join, "join80.csv", row.names=F)
-      
-    }
-    if (input$threshold==90){
-      join= join %>%
-        mutate(mode= mode * 1.9,
-               med = med*1.9,
-               mean=mean*1.9)
-      join=round(join,2)
-      join
-      #write.csv(join, "join90.csv", row.names=F) 
-    }
-    if (input$threshold==100){
-      join= join %>%
-        mutate(mode= mode * 2,
-               med = med*2,
-               mean=mean*2)
-   
-      join
-      #write.csv(join, "join100.csv", row.names=F)
-      
-    }
- 
+    p_plot=""
     if (input$radio==1){
+      
+      packagePlot=("")
+      p_plot=""
       join2= join %>%
-        select(Service, date, mean, hour_hits)
+        select(Service, mean, hour_hits)
       
       join2=join2 %>%
         mutate(test = (mean)-hour_hits)
@@ -385,14 +354,50 @@ server <- function(input, output,session) {
           test >0 ~ "lightgray",
           test <0 ~ "red",
           TRUE ~ "lightgray"))
-      join2=join2%>%
+      join2_mean=join2%>%
         filter(flags=="red")
-   
-      #write.csv(join2, "join2_mean.csv", row.names=F)
+      
+      write.csv(join2_mean, "join2_mean.csv", row.names=F)
+      
+      
+      button1<- renderD3({
+        
+        p_plot=""
+        join2=read.csv("join2_mean.csv", header=T)
+        order <- unique(join2$Service)
+        
+        
+        bub <- join2%>%
+          group_by(Service, flags) %>%
+          tally(hour_hits) %>%
+          arrange(desc(n), tolower(Service)) %>%
+          # Just show the top 60, otherwise it gets hard to see
+          head(90)
+        bub= bub %>%
+          select(Service,n) %>%
+          rename(id=Service,
+                 value=n)
+        bub=as.data.frame(bub)
+        write.csv(bub, "bub1.csv", row.names=F)
+        #p_plot=r2d3()
+        r2d3(data = read.csv("bub1.csv"), d3_version = 4, script = "bubbles.js")
+        
+      })
+      #output$packagePlot=""
+      packagePlot=""
+      output$packagePlot=button1
     } 
+  })
+  
+  observe({
+    p_plot=""
     if (input$radio==2){
+      
+      
+      packagePlot=("")
+      p_plot=""
       join2= join %>%
-        select(Service, date, med, hour_hits)
+        select(Service, med, hour_hits)
       join2=join2 %>%
         mutate(test = med-hour_hits)
       join2= join2 %>%
@@ -400,14 +405,51 @@ server <- function(input, output,session) {
           test >0 ~ "lightgray",
           test <0 ~ "red",
           TRUE ~ "lightgray"))
-      join2=join2%>%
+      join2_med=join2%>%
         filter(flags=="red")
-  
-      #write.csv(join2, "join2_med.csv", row.names=F)
+      
+      write.csv(join2_med, "join2_med.csv", row.names=F)
+      
+      button2 <- renderD3({
+        p_plot=""
+        # input$packagePlot=NULL
+        #join2=NULL
+        join2=read.csv("join2_med.csv", header=T)
+        order <- unique(join2$Service)
+        
+        
+        bub <- join2%>%
+          group_by(Service, flags) %>%
+          tally(hour_hits) %>%
+          arrange(desc(n), tolower(Service)) %>%
+          #     # Just show the top 60, otherwise it gets hard to see
+          head(90)
+        bub= bub %>%
+          select(Service,n) %>%
+          rename(id=Service,
+                 value=n)
+        bub=as.data.frame(bub)
+        write.csv(bub, "bub2.csv", row.names=F)
+        r2d3(data = read.csv("bub2.csv"), d3_version = 4, script = "bubbles.js")
+        
+        
+      })
+      #output$packagePlot=""
+      packagePlot=""
+      output$packagePlot=button2
     }
+    
+  })
+  p_plot=""
+  
+  observe({
+    
     if (input$radio==3){
+      
+      packagePlot=("")
+      p_plot=""
       join2= join %>%
-        select(Service, date, mode, hour_hits)
+        select(Service, mode, hour_hits)
       join2=join2 %>%
         mutate(test = mode-hour_hits)
       join2= join2 %>%
@@ -416,39 +458,77 @@ server <- function(input, output,session) {
           test <0 ~ "red",
           TRUE ~ "lightgray"))
       
-      join2=join2%>%
+      join2_mode=join2%>%
         filter(flags=="red")
-      #write.csv(join2, "join2_mode.csv", row.names=F)
-
+      write.csv(join2_mode, "join2_mode.csv", row.names=F)
+      
+      button3<- renderD3({
+        #input$packagePlot=NULL
+        p_plot=""
+        join2=read.csv("join2_mode.csv", header=T)
+        order <- unique(join2$Service)
+        
+        
+        bub <- join2%>%
+          group_by(Service, flags) %>%
+          tally(hour_hits) %>%
+          arrange(desc(n), tolower(Service)) %>%
+          #     # Just show the top 60, otherwise it gets hard to see
+          head(90)
+        bub= bub %>%
+          select(Service,n) %>%
+          rename(id=Service,
+                 value=n)
+        bub=as.data.frame(bub)
+        write.csv(bub, "bub3.csv", row.names=F)
+        r2d3(data = read.csv("bub3.csv"), d3_version = 4, script = "bubbles.js")
+        
+        #bubbles=bubbles(bub$n, bub$Service, key = bub$Service, color=bub$flags, tooltip =(bub$n) )
+        
+        
+        #   #bubbles(hourly_url_agg$Service, hourly_url_agg$Service, key = hourly_url_agg$Service)
+      })
+      #output$packagePlot=""
+      packagePlot=""
+      output$packagePlot=button3
       
     }
-    join2
-    order <- unique(join2$Service)
-    
-    
-    bub <- join2%>%
-      group_by(Service, flags) %>%
-      tally(hour_hits) %>%
-      arrange(desc(n), tolower(Service)) %>%
-      #     # Just show the top 60, otherwise it gets hard to see
-      head(90)
-    bub= bub %>%
-      select(Service,n) %>%
-      rename(id=Service,
-             value=n)
-    bub=as.data.frame(bub)
-    write.csv(bub, "bub.csv", row.names=F)
-    r2d3(data = read.csv("bub.csv"), d3_version = 4, script = "bubbles.js")
-    
-    #bubbles=bubbles(bub$n, bub$Service, key = bub$Service, color=bub$flags, tooltip =(bub$n) )
-    
-    
-    #   #bubbles(hourly_url_agg$Service, hourly_url_agg$Service, key = hourly_url_agg$Service)
   })
   
+  # output$packagePlot<-(p_plot)  
+  #})
   
-
-
+  
+  # Service <-(join2$Service)
+  #  output$packagePlot <- renderD3({""})
+  #output$packagePlot <- renderD3({
+  
+  #   join2=read.csv("join2.csv", header=T)
+  #  order <- unique(join2$Service)
+  #  
+  
+  #  bub <- join2%>%
+  #   group_by(Service, flags) %>%
+  #   tally(hour_hits) %>%
+  #  arrange(desc(n), tolower(Service)) %>%
+  #     # Just show the top 60, otherwise it gets hard to see
+  #  head(90)
+  #  bub= bub %>%
+  #  select(Service,n) %>%
+  #  rename(id=Service,
+  #  value=n)
+  # bub=as.data.frame(bub)
+  # write.csv(bub, "bub.csv", row.names=F)
+  # r2d3(data = read.csv("bub.csv"), d3_version = 4, script = "bubbles.js")
+  
+  #bubbles=bubbles(bub$n, bub$Service, key = bub$Service, color=bub$flags, tooltip =(bub$n) )
+  
+  
+  #   #bubbles(hourly_url_agg$Service, hourly_url_agg$Service, key = hourly_url_agg$Service)
+  #  })
+  
+  
+  
   Service <-as.factor(df_url$Service)
   #work out the mean for reported issues
   #mean_issues<-(hourly_url_agg$flag2)
@@ -474,23 +554,23 @@ server <- function(input, output,session) {
     
     ###filter by radio buttons
     
-    if (input$radio==1){
-      df_url= df_url %>%
-        select(Service, Date, Mean, Total)
-    }
+   # if (input$radio==1){
+   #   df_url= df_url %>%
+   #     select(Service, Date, Mean, Total)
+  #  }
     
-    df_url 
+   # df_url 
     
-    if (input$radio==2){
-      df_url= df_url %>%
-        select(Service, Date, Median, Total)
-    }
+   # if (input$radio==2){
+   #   df_url= df_url %>%
+   #     select(Service, Date, Median, Total)
+   # }
     
-    df_url
-    if (input$radio==3){
-      df_url= df_url %>%
-        select(Service, Date, Mode, Total)
-    }
+   # df_url
+    #if (input$radio==3){
+    #  df_url= df_url %>%
+    #    select(Service, Date, Mode, Total)
+   # }
     
     df_url
     #time.data$Service<-as.factor(time.data$Service)
@@ -503,7 +583,7 @@ server <- function(input, output,session) {
     df_url
     
   })
- 
+  
   )
   
   wc_click <- reactive({
@@ -514,180 +594,31 @@ server <- function(input, output,session) {
     val <- wc_click()
     if(!is.null(val))
     {
-      data <-filter(df_url,Service==val)
-      ##filter by slider first 
-      if (input$threshold==0){
-        data= data %>%
-          mutate(Mode= Mode * 1,
-                 Median = Median*1,
-                 Mean=Mean*1)
-        data
-        
-      }
-      if (input$threshold==10){
-        data= data %>%
-          mutate(Mode= Mode * 1.1,
-                 Median = Median*1.1,
-                 Mean=Mean*1.1)
-        data
-        
-      }
-      if (input$threshold==20){
-        data= data %>%
-          mutate(Mode= Mode * 1.2,
-                 Median = Median*1.2,
-                 Mean=Mean*1.2)
-        data
-        
-      }
-      if (input$threshold==30){
-        data= data %>%
-          mutate(Mode= Mode * 1.3,
-                 Median = Median*1.3,
-                 Mean=Mean*1.3)
-        data
-        
-      }
-      if (input$threshold==40){
-        data= data %>%
-          mutate(Mode= Mode * 1.4,
-                 Median = Median*1.4,
-                 Mean=Mean*1.4)
-        data
-        
-      }
-      if (input$threshold==50){
-        data= data %>%
-          mutate(Mode= Mode * 1.5,
-                 Median = Median*1.5,
-                 Mean=Mean*1.5)
-        data
-        
-      }
-      if (input$threshold==60){
-        data= data %>%
-          mutate(Mode= Mode * 1.6,
-                 Median = Median*1.6,
-                 Mean=Mean*1.6)
-        data
-        
-      }
-      if (input$threshold==70){
-        data= data %>%
-          mutate(Mode= Mode * 1.7,
-                 Median = Median*1.7,
-                 Mean=Mean*1.7)
-        data
-        
-      }
-      if (input$threshold==80){
-        data= data %>%
-          mutate(Mode= Mode * 1.8,
-                 Median = Median*1.8,
-                 Mean=Mean*1.8)
-        data
-        
-      }
-      if (input$threshold==90){
-        data= data %>%
-          mutate(Mode= Mode * 1.9,
-                 Median = Median*1.9,
-                 Mean=Mean*1.9)
-        data
-        
-      }
-      if (input$threshold==100){
-        data= data %>%
-          mutate(Mode= Mode * 2,
-                 Median = Median*2,
-                 Mean=Mean*2)
-        data
-        
-      }
-      
-      ###filter by radio buttons
-      if (input$radio==1){
-        data= data %>%
-          select(Date, Mean, Total)}
-      data
-      
-      if (input$radio==2){
-        data= data %>%
-           select(Date, Median, Total)
-          
-       }
-      data
-      if (input$radio==3){
-         data= data %>%
-        select(Date, Mode, Total)
-        
-       }
-      data
-     ###filter by date
-      
-       data=data[data$Date>=(input$dateRange[1]) & data$Date<=(input$dateRange[2]),]
+      data <-filter(bub_urls,Service==val)
       data
       
     }
   })
-
-
-
-output$results <- DT::renderDataTable(DT::datatable(rownames=F,options=list(
-  lengthMenu = list(c(10, 20,30,40,50,60,70,80,90,100), c('10','20','30','40','50','60','70','80','90','100' )),
-  pageLength = 10,
-  autoWidth=F,
-  scrollX=T,
-  # 
-  initComplete = JS(
-    
-    "function(settings, json) {",
-    "$(this.api().table().header()).css({'background-color': '#038fd2', 'color': '#fff'});",
-    "}")
-),
-data()
-
-)
-)
-  #output$results <-  DT::renderDataTable({
   
-   #data()
-    
-    
- # })
-  #output$table <- DT::renderDataTable(DT::datatable(rownames=F,options=list(
-#observeEvent(input$radio,{
-#  if (input$radio==1){
- # data= data %>%
- #   select(Date, Mean, Total)}
-#  data
- 
- #if (input$radio==2){
- #  data= data %>%
-#     select(Date, Median, Total)
-# }
- #data
- #if (input$radio==3){
-##   data= data %>%
-   #  select(Date, Mode, Total)
-# }
-##data
-#})
-#output$results <-  DT::renderDataTable({
-#  input$radio
- # data()
   
-#})
-
   
-  #format the table using repor ted issues column, any value above the mean
-  #colour it in red
-  #  %>%formatStyle(
-  # 'col',
-  #  backgroundColor = styleEqual(unique(df_url_color$url), c("white", "red"))
-  # )
-  #)
-  #)
+  output$results <- DT::renderDataTable(DT::datatable(rownames=F,options=list(
+    lengthMenu = list(c(10, 20,30,40,50,60,70,80,90,100), c('10','20','30','40','50','60','70','80','90','100' )),
+    pageLength = 10,
+    autoWidth=F,
+    scrollX=T,
+    # 
+    initComplete = JS(
+      
+      "function(settings, json) {",
+      "$(this.api().table().header()).css({'background-color': '#038fd2', 'color': '#fff'});",
+      "}")
+  ),
+  data()
+  
+  )
+  )
+  
 }
 # Run the application 
 shinyApp(ui = ui, server = server, enableBookmarking="url")
