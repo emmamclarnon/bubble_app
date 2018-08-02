@@ -3,10 +3,14 @@
 // Based on https://bl.ocks.org/mbostock/4063269
 
 // Initialization
+
+//d3.select('svg').selectAll("*").remove();
+
 svg.attr("font-family", "sans-serif")
   .attr("font-size", "8")
   .attr("text-anchor", "middle");
-    
+ 
+  
 var svgSize = 600;
 var pack = d3.pack()
   .size([svgSize, svgSize])
@@ -17,6 +21,7 @@ var color = d3.scaleOrdinal(d3.schemeCategory20c);
 
 var group = svg.append("g");
 
+d3.select('svg').selectAll("*").remove();
 // Resize
 r2d3.onResize(function(width, height) {
   var minSize = Math.min(width, height);
@@ -52,7 +57,7 @@ r2d3.onRender(function(data, svg, width, height, options) {
       .attr("id", function(d) { return d.id; })
       .attr("r", function(d) { return d.r; })
       .style("fill", function(d) { return color(d.package); })
-	.on('click', function(d) {  Shiny.onInputChange('clickedValue', d.id)});
+	.on('click', function(d) {  Shiny.onInputChange('clickedValue', d.id,{priority: "event"})});
 
   node.append("clipPath")
       .attr("id", function(d) { return "clip-" + d.id; })
@@ -70,7 +75,7 @@ r2d3.onRender(function(data, svg, width, height, options) {
 
   node.append("title")
       .text(function(d) { return d.id + "\n" + format(d.value); });
-
+ 
   
   r2d3.resize(width, height);
 });
